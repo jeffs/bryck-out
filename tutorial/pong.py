@@ -7,7 +7,7 @@ WHITE = sdl2.ext.Color(255, 255, 255)
 class SoftwareRenderer(sdl2.ext.SoftwareSpriteRenderSystem):
     def render(self, components):
         sdl2.ext.fill(self.surface, sdl2.ext.Color(0, 0, 0))
-        super(SoftwareRenderer, self).render(components)
+        super().render(components)
 
 class Player(sdl2.ext.Entity):
     def __init__(self, world, sprite, posx=0, posy=0):
