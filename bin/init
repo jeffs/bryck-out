@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+#
+# This script initializes a Python virtual environment.
+
+import os
+import subprocess
+import sys
+
+UNIX_PIP = 'venv/bin/pip'
+WINDOWS_PIP = r'venv\Scripts\python -m pip'
+
+def run(command):
+    result = subprocess.run(command.split())
+    if result.returncode != 0:
+        print(result)
+        raise Exception('command returned non-zero status: ' + command)
+
+print('Initializing virtual environment.  Please wait...')
+run(sys.executable + ' -m venv venv')
+pip = UNIX_PIP if os.path.isfile(UNIX_PIP) else WINDOWS_PIP
+run(pip + ' install --upgrade pip')
+run(pip + ' install --requirement requirements.txt')
+
+print('Virtual environment initialized.  Ready for activation.')
