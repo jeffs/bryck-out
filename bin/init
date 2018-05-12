@@ -7,7 +7,7 @@ import subprocess
 import sys
 
 UNIX_PIP = 'venv/bin/pip'
-WINDOWS_PIP = 'venv/Scripts/pip'
+WINDOWS_PIP = r'venv\Scripts\python -m pip'
 
 def run(command):
     result = subprocess.run(command.split())
