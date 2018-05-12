@@ -10,7 +10,15 @@ def run(command):
         print(result)
         raise Exception('command returned non-zero status: ' + command)
 
-run('python3 -m venv venv')
+def find_python():
+    try:
+        run('python3 -V')
+        return 'python3'
+    except:
+        run('python -V')
+        return 'python'
+
+run(find_python() + ' -m venv venv')
 run('venv/bin/pip install --upgrade pip')
 run('venv/bin/pip install wheel')
 run('venv/bin/pip install --requirement requirements.txt')
