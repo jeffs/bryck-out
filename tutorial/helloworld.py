@@ -1,9 +1,15 @@
 #! /usr/bin/env python
 """Tutorial script to display "Hello world" with PySDL2."""
+
+import os
 import sys
 import sdl2.ext
 
-RESOURCES = sdl2.ext.Resources(r"..\venv\Lib\site-packages\sdl2\examples", "resources")
+from distutils.sysconfig import get_python_lib
+
+RESOURCES = sdl2.ext.Resources(
+        os.path.join(get_python_lib(), 'sdl2', 'examples'),
+        'resources')
 
 # Create window.
 sdl2.ext.init()
