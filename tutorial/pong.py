@@ -41,4 +41,4 @@ def run():
         world.process()
 
 if __name__ == "__main__":
-    sys.exit(run())
+    run()
