@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+#
+# This script initializes a Python virtual environment.
+
+import subprocess
+
+def run(command):
+    result = subprocess.run(command.split())
+    if result.returncode != 0:
+        print(result)
+        raise Exception('command returned non-zero status: ' + command)
+
+run('python3 -m venv venv')
+run('venv/bin/pip install --upgrade pip')
+run('venv/bin/pip install wheel')
+run('venv/bin/pip install --requirement requirements.txt')
+
+print('Virtual environment initialized.  Ready for activation.')
