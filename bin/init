@@ -2,7 +2,12 @@
 #
 # This script initializes a Python virtual environment.
 
+import os
 import subprocess
+import sys
+
+UNIX_PIP = 'venv/bin/pip'
+WINDOWS_PIP = 'venv/Scripts/pip'
 
 def run(command):
     result = subprocess.run(command.split())
@@ -10,17 +15,10 @@ def run(command):
         print(result)
         raise Exception('command returned non-zero status: ' + command)
 
-def find_python():
-    try:
-        run('python3 -V')
-        return 'python3'
-    except:
-        run('python -V')
-        return 'python'
-
-run(find_python() + ' -m venv venv')
-run('venv/bin/pip install --upgrade pip')
-run('venv/bin/pip install wheel')
-run('venv/bin/pip install --requirement requirements.txt')
+print('Initializing virtual environment.  Please wait...')
+run(sys.executable + ' -m venv venv')
+pip = UNIX_PIP if os.path.isfile(UNIX_PIP) else WINDOWS_PIP
+run(pip + ' install --upgrade pip')
+run(pip + ' install --requirement requirements.txt')
 
 print('Virtual environment initialized.  Ready for activation.')
