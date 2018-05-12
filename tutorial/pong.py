@@ -2,6 +2,7 @@ import sys
 import sdl2
 import sdl2.ext
 
+BLUE = sdl2.ext.Color(0, 0, 255)
 WHITE = sdl2.ext.Color(255, 255, 255)
 
 class SoftwareRenderer(sdl2.ext.SoftwareSpriteRenderSystem):
@@ -9,10 +10,47 @@ class SoftwareRenderer(sdl2.ext.SoftwareSpriteRenderSystem):
         sdl2.ext.fill(self.surface, sdl2.ext.Color(0, 0, 0))
         super().render(components)
 
+class MovementSystem(sdl2.ext.Applicator):
+    def __init__(self, minx, miny, maxx, maxy):
+        super().__init__()
+        self.componenttypes = Velocity, sdl2.ext.Sprite
+        self.minx = minx
+        self.miny = miny
+        self.maxx = maxx
+        self.maxy = maxy
+
+    def process(self, world, componentsets):
+        for velocity, sprite in componentsets:
+            swidth, sheight = sprite.size
+            sprite.x += velocity.vx
+            sprite.y += velocity.vy
+
+            sprite.x = max(self.minx, sprite.x)
+            sprite.y = max(self.miny, sprite.y)
+
+            pmaxx = sprite.x + swidth
+            pmaxy = sprite.y + sheight
+            if pmaxx > self.maxx:
+                sprite.x = self.maxx - swidth
+            if pmaxy > self.maxy:
+                sprite.y = self.maxy - sheight
+
+class Velocity:
+    def __init__(self):
+        self.vx = 0
+        self.vy = 0
+
 class Player(sdl2.ext.Entity):
     def __init__(self, world, sprite, posx=0, posy=0):
         self.sprite = sprite
         self.sprite.position = posx, posy
+        self.velocity = Velocity()
+
+class Ball(sdl2.ext.Entity):
+    def __init__(self, world, sprite, posx=0, posy=0):
+        self.sprite = sprite
+        self.sprite.position = posx, posy
+        self.velocity = Velocity()
 
 def run():
     sdl2.ext.init()
@@ -21,15 +59,22 @@ def run():
 
     world = sdl2.ext.World()
 
+    movement = MovementSystem(0, 0, 800, 600)
     spriterenderer = SoftwareRenderer(window)
+
+    world.add_system(movement)
     world.add_system(spriterenderer)
 
     factory = sdl2.ext.SpriteFactory(sdl2.ext.SOFTWARE)
     sp_paddle1 = factory.from_color(WHITE, size=(20, 100))
     sp_paddle2 = factory.from_color(WHITE, size=(20, 100))
+    sp_ball = factory.from_color(BLUE, size=(20, 20))
 
     player1 = Player(world, sp_paddle1, 0, 250)
     player2 = Player(world, sp_paddle2, 780, 250)
+
+    ball = Ball(world, sp_ball, 390, 290)
+    ball.velocity.vx = -3
 
     running = True
     while running:
