@@ -23,3 +23,8 @@ sprite = factory.from_image(RESOURCES.get_path("hello.bmp"))
 spriterenderer = factory.create_sprite_render_system(window)
 
 spriterenderer.render(sprite)
+
+processor = sdl2.ext.TestEventProcessor()
+processor.run(window)
+
+sdl2.ext.quit()
