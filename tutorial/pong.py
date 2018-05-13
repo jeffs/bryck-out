@@ -89,11 +89,48 @@ class Velocity:
         self.vx = 0
         self.vy = 0
 
+class TrackingAIController(sdl2.ext.Applicator):
+    def __init__(self, miny, maxy):
+        super().__init__()
+        self.componenttypes = PlayerData, Velocity, sdl2.ext.Sprite
+        self.miny = miny
+        self.maxy = maxy
+        self.ball = None
+
+    def process(self, world, componentsets):
+        for pdata, vel, sprite in componentsets:
+            if not pdata.ai:
+                continue
+
+            centery = sprite.y + sprite.size[1] // 2
+            if self.ball.velocity.vx < 0:
+                # ball is moving away from the AI
+                if centery < self.maxy // 2:
+                    vel.vy = 3
+                elif centery > self.maxy // 2:
+                    vel.vy = -3
+                else:
+                    vel.vy = 0
+            else:
+                bcentery = self.ball.sprite.y + self.ball.sprite.size[1] // 2
+                if bcentery < centery:
+                    vel.vy = -3
+                elif bcentery > centery:
+                    vel.vy = 3
+                else:
+                    vel.vy = 0
+
+class PlayerData:
+    def __init__(self):
+        self.ai = False
+
 class Player(sdl2.ext.Entity):
-    def __init__(self, world, sprite, posx=0, posy=0):
+    def __init__(self, world, sprite, posx=0, posy=0, ai=False):
         self.sprite = sprite
         self.sprite.position = posx, posy
         self.velocity = Velocity()
+        self.playerdata = PlayerData()
+        self.playerdata.ai = ai
 
 class Ball(sdl2.ext.Entity):
     def __init__(self, world, sprite, posx=0, posy=0):
@@ -108,10 +145,12 @@ def run():
 
     world = sdl2.ext.World()
 
+    aicontroller = TrackingAIController(0, 600)
     movement = MovementSystem(0, 0, 800, 600)
     collision = CollisionSystem(0, 0, 800, 600)
     spriterenderer = SoftwareRenderer(window)
 
+    world.add_system(aicontroller)
     world.add_system(movement)
     world.add_system(collision)
     world.add_system(spriterenderer)
@@ -122,12 +161,13 @@ def run():
     sp_ball = factory.from_color(BLUE, size=(20, 20))
 
     player1 = Player(world, sp_paddle1, 0, 250)
-    player2 = Player(world, sp_paddle2, 780, 250)
+    player2 = Player(world, sp_paddle2, 780, 250, True)
 
     ball = Ball(world, sp_ball, 390, 290)
     ball.velocity.vx = -3
 
     collision.ball = ball
+    aicontroller.ball = ball
 
     running = True
     while running:
