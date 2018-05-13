@@ -9,21 +9,32 @@ BLUE = sdl2.ext.Color(0, 0, 255)
 WHITE = sdl2.ext.Color(255, 255, 255)
 
 EntitySet = namedtuple('EntitySet', ['ball', 'player1', 'player2'])
+Rectangle = namedtuple('Rectangle', ['left', 'top', 'right', 'bottom'])
 
 class SoftwareRenderer(sdl2.ext.SoftwareSpriteRenderSystem):
+
+    def __init__(self, window, fence):
+        super().__init__(window)
+        self.fence = fence
+
+    def _draw_net(self):
+        minx, miny, maxx, maxy = self.fence
+        x = minx + (maxx - minx) // 2
+        for y in range(miny, maxy, 10):
+            sdl2.ext.line(self.surface, WHITE, [x, y, x, y + 5], 1)
+
     def render(self, components):
         sdl2.ext.fill(self.surface, sdl2.ext.Color(0, 0, 0))
+        self._draw_net()
         super().render(components)
 
 class CollisionSystem(sdl2.ext.Applicator):
-    def __init__(self, minx, miny, maxx, maxy):
+
+    def __init__(self, fence):
         super().__init__()
         self.componenttypes = Velocity, sdl2.ext.Sprite
         self.entities = None
-        self.minx = minx
-        self.miny = miny
-        self.maxx = maxx
-        self.maxy = maxy
+        self.fence = fence
 
     def _overlap(self, item):
         pos, sprite = item
@@ -39,6 +50,7 @@ class CollisionSystem(sdl2.ext.Applicator):
 
     def process(self, world, componentsets):
         ball, player1, player2 = self.entities
+        minx, miny, maxx, maxy = self.fence
         collitems = [comp for comp in componentsets if self._overlap(comp)]
         if collitems:
             ball.velocity.vx = -ball.velocity.vx
@@ -58,66 +70,66 @@ class CollisionSystem(sdl2.ext.Applicator):
             else:
                 ball.velocity.vy = -ball.velocity.vy
 
-        if (ball.sprite.y <= self.miny or
-            ball.sprite.y + ball.sprite.size[1] >= self.maxy):
+        if (ball.sprite.y <= miny or
+            ball.sprite.y + ball.sprite.size[1] >= maxy):
             ball.velocity.vy = -ball.velocity.vy
 
-        if (ball.sprite.x <= self.minx or
-            ball.sprite.x + ball.sprite.size[0] >= self.maxx):
+        if (ball.sprite.x <= minx or
+            ball.sprite.x + ball.sprite.size[0] >= maxx):
 
-            winner = player2 if ball.sprite.x <= self.minx else player1
+            winner = player2 if ball.sprite.x <= minx else player1
             winner.playerdata.score += 1
             scores = (player1.playerdata.score, player2.playerdata.score)
             print("Score: {} to {}".format(*scores))
 
             bwidth = ball.sprite.size[0]
-            bcenterx = self.minx + (self.maxx - self.minx) // 2
+            bcenterx = minx + (maxx - minx) // 2
             ball.sprite.x = bcenterx - bwidth // 2
 
             bheight = ball.sprite.size[1]
-            bcentery = self.miny + (self.maxy - self.miny) // 2
+            bcentery = miny + (maxy - miny) // 2
             ball.sprite.y = bcentery - bheight // 2
 
             ball.velocity.vx = -3
             ball.velocity.vy = randint(0, 6)
 
 class MovementSystem(sdl2.ext.Applicator):
-    def __init__(self, minx, miny, maxx, maxy):
+
+    def __init__(self, fence):
         super().__init__()
         self.componenttypes = Velocity, sdl2.ext.Sprite
-        self.minx = minx
-        self.miny = miny
-        self.maxx = maxx
-        self.maxy = maxy
+        self.fence = fence
 
     def process(self, world, componentsets):
+        minx, miny, maxx, maxy = self.fence
         for velocity, sprite in componentsets:
             swidth, sheight = sprite.size
             sprite.x += velocity.vx
             sprite.y += velocity.vy
 
-            sprite.x = max(self.minx, sprite.x)
-            sprite.y = max(self.miny, sprite.y)
+            sprite.x = max(minx, sprite.x)
+            sprite.y = max(miny, sprite.y)
 
             pmaxx = sprite.x + swidth
             pmaxy = sprite.y + sheight
-            if pmaxx > self.maxx:
-                sprite.x = self.maxx - swidth
-            if pmaxy > self.maxy:
-                sprite.y = self.maxy - sheight
+            if pmaxx > maxx:
+                sprite.x = maxx - swidth
+            if pmaxy > maxy:
+                sprite.y = maxy - sheight
 
 class Velocity:
+
     def __init__(self):
         self.vx = 0
         self.vy = 0
 
 class TrackingAIController(sdl2.ext.Applicator):
-    def __init__(self, miny, maxy):
+
+    def __init__(self, fence):
         super().__init__()
         self.componenttypes = PlayerData, Velocity, sdl2.ext.Sprite
-        self.miny = miny
-        self.maxy = maxy
         self.ball = None
+        self.fence = fence
 
     def process(self, world, componentsets):
         for pdata, vel, sprite in componentsets:
@@ -127,9 +139,11 @@ class TrackingAIController(sdl2.ext.Applicator):
             centery = sprite.y + sprite.size[1] // 2
             if self.ball.velocity.vx < 0:
                 # ball is moving away from the AI
-                if centery < self.maxy // 2:
+                miny, maxy = self.fence.top, self.fence.bottom
+                court_centery = miny + (maxy - miny) // 2
+                if centery <  court_centery:
                     vel.vy = 3
-                elif centery > self.maxy // 2:
+                elif centery > court_centery:
                     vel.vy = -3
                 else:
                     vel.vy = 0
@@ -143,11 +157,13 @@ class TrackingAIController(sdl2.ext.Applicator):
                     vel.vy = 0
 
 class PlayerData:
+
     def __init__(self):
         self.ai = False
         self.score = 0
 
 class Player(sdl2.ext.Entity):
+
     def __init__(self, world, sprite, posx=0, posy=0, ai=False):
         self.sprite = sprite
         self.sprite.position = posx, posy
@@ -156,6 +172,7 @@ class Player(sdl2.ext.Entity):
         self.playerdata.ai = ai
 
 class Ball(sdl2.ext.Entity):
+
     def __init__(self, world, sprite, posx=0, posy=0):
         self.sprite = sprite
         self.sprite.position = posx, posy
@@ -167,11 +184,12 @@ def run():
     window.show()
 
     world = sdl2.ext.World()
+    fence = Rectangle(0, 0, 800, 600)
 
-    aicontroller = TrackingAIController(0, 600)
-    movement = MovementSystem(0, 0, 800, 600)
-    collision = CollisionSystem(0, 0, 800, 600)
-    spriterenderer = SoftwareRenderer(window)
+    aicontroller = TrackingAIController(fence)
+    movement = MovementSystem(fence)
+    collision = CollisionSystem(fence)
+    spriterenderer = SoftwareRenderer(window, fence)
 
     world.add_system(aicontroller)
     world.add_system(movement)
