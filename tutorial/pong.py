@@ -2,10 +2,13 @@ import sys
 import sdl2
 import sdl2.ext
 
+from collections import namedtuple
 from random import randint
 
 BLUE = sdl2.ext.Color(0, 0, 255)
 WHITE = sdl2.ext.Color(255, 255, 255)
+
+EntitySet = namedtuple('EntitySet', ['ball', 'player1', 'player2'])
 
 class SoftwareRenderer(sdl2.ext.SoftwareSpriteRenderSystem):
     def render(self, components):
@@ -16,7 +19,7 @@ class CollisionSystem(sdl2.ext.Applicator):
     def __init__(self, minx, miny, maxx, maxy):
         super().__init__()
         self.componenttypes = Velocity, sdl2.ext.Sprite
-        self.ball = None
+        self.entities = None
         self.minx = minx
         self.miny = miny
         self.maxx = maxx
@@ -24,54 +27,59 @@ class CollisionSystem(sdl2.ext.Applicator):
 
     def _overlap(self, item):
         pos, sprite = item
-        if sprite == self.ball.sprite:
+        ball = self.entities.ball
+        if sprite == ball.sprite:
             return False
 
         left, top, right, bottom = sprite.area
-        bleft, btop, bright, bbottom = self.ball.sprite.area
+        bleft, btop, bright, bbottom = ball.sprite.area
 
         return (bleft < right and bright > left and
                 btop < bottom and bbottom > top)
 
     def process(self, world, componentsets):
+        ball, player1, player2 = self.entities
         collitems = [comp for comp in componentsets if self._overlap(comp)]
         if collitems:
-            self.ball.velocity.vx = -self.ball.velocity.vx
+            ball.velocity.vx = -ball.velocity.vx
 
             sprite = collitems[0][1]
-            ballcentery = self.ball.sprite.y + self.ball.sprite.size[1] // 2
+            ballcentery = ball.sprite.y + ball.sprite.size[1] // 2
             halfheight = sprite.size[1] // 2
             stepsize = halfheight // 10
             degrees = 0.7
             paddlecentery = sprite.y + halfheight
             if ballcentery < paddlecentery:
                 factor = (paddlecentery - ballcentery) // stepsize
-                self.ball.velocity.vy = -int(round(factor * degrees))
+                ball.velocity.vy = -int(round(factor * degrees))
             elif ballcentery > paddlecentery:
                 factor = (ballcentery - paddlecentery) // stepsize
-                self.ball.velocity.vy = int(round(factor * degrees))
+                ball.velocity.vy = int(round(factor * degrees))
             else:
-                self.ball.velocity.vy = -self.ball.velocity.vy
+                ball.velocity.vy = -ball.velocity.vy
 
-        if (self.ball.sprite.y <= self.miny or
-            self.ball.sprite.y + self.ball.sprite.size[1] >= self.maxy):
-            self.ball.velocity.vy = -self.ball.velocity.vy
+        if (ball.sprite.y <= self.miny or
+            ball.sprite.y + ball.sprite.size[1] >= self.maxy):
+            ball.velocity.vy = -ball.velocity.vy
 
-        if (self.ball.sprite.x <= self.minx or
-            self.ball.sprite.x + self.ball.sprite.size[0] >= self.maxx):
+        if (ball.sprite.x <= self.minx or
+            ball.sprite.x + ball.sprite.size[0] >= self.maxx):
 
-            bwidth = self.ball.sprite.size[0]
+            winner = player2 if ball.sprite.x <= self.minx else player1
+            winner.playerdata.score += 1
+            scores = (player1.playerdata.score, player2.playerdata.score)
+            print("Score: {} to {}".format(*scores))
+
+            bwidth = ball.sprite.size[0]
             bcenterx = self.minx + (self.maxx - self.minx) // 2
-            self.ball.sprite.x = bcenterx - bwidth // 2
+            ball.sprite.x = bcenterx - bwidth // 2
 
-            bheight = self.ball.sprite.size[1]
+            bheight = ball.sprite.size[1]
             bcentery = self.miny + (self.maxy - self.miny) // 2
-            self.ball.sprite.y = bcentery - bheight // 2
+            ball.sprite.y = bcentery - bheight // 2
 
-            self.ball.velocity.vx = -3
-            self.ball.velocity.vy = randint(0, 6)
-
-            print(self.ball.sprite.x, self.ball.sprite.y)
+            ball.velocity.vx = -3
+            ball.velocity.vy = randint(0, 6)
 
 class MovementSystem(sdl2.ext.Applicator):
     def __init__(self, minx, miny, maxx, maxy):
@@ -137,6 +145,7 @@ class TrackingAIController(sdl2.ext.Applicator):
 class PlayerData:
     def __init__(self):
         self.ai = False
+        self.score = 0
 
 class Player(sdl2.ext.Entity):
     def __init__(self, world, sprite, posx=0, posy=0, ai=False):
@@ -180,7 +189,7 @@ def run():
     ball = Ball(world, sp_ball, 390, 290)
     ball.velocity.vx = -3
 
-    collision.ball = ball
+    collision.entities = EntitySet(ball, player1, player2)
     aicontroller.ball = ball
 
     running = True
