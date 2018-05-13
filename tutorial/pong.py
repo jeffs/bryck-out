@@ -2,6 +2,8 @@ import sys
 import sdl2
 import sdl2.ext
 
+from random import randint
+
 BLUE = sdl2.ext.Color(0, 0, 255)
 WHITE = sdl2.ext.Color(255, 255, 255)
 
@@ -57,7 +59,19 @@ class CollisionSystem(sdl2.ext.Applicator):
 
         if (self.ball.sprite.x <= self.minx or
             self.ball.sprite.x + self.ball.sprite.size[0] >= self.maxx):
-            self.ball.velocity.vx = -self.ball.velocity.vx
+
+            bwidth = self.ball.sprite.size[0]
+            bcenterx = self.minx + (self.maxx - self.minx) // 2
+            self.ball.sprite.x = bcenterx - bwidth // 2
+
+            bheight = self.ball.sprite.size[1]
+            bcentery = self.miny + (self.maxy - self.miny) // 2
+            self.ball.sprite.y = bcentery - bheight // 2
+
+            self.ball.velocity.vx = -3
+            self.ball.velocity.vy = randint(0, 6)
+
+            print(self.ball.sprite.x, self.ball.sprite.y)
 
 class MovementSystem(sdl2.ext.Applicator):
     def __init__(self, minx, miny, maxx, maxy):
