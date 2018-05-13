@@ -1,3 +1,4 @@
+import os
 import sys
 import sdl2
 import sdl2.ext
@@ -8,7 +9,10 @@ from random import randint
 BLUE = sdl2.ext.Color(0, 0, 255)
 WHITE = sdl2.ext.Color(255, 255, 255)
 
+RESOURCES = sdl2.ext.Resources(os.getcwd(), 'bmp')
+
 EntitySet = namedtuple('EntitySet', ['ball', 'player1', 'player2'])
+
 Rectangle = namedtuple('Rectangle', ['left', 'top', 'right', 'bottom'])
 
 class SoftwareRenderer(sdl2.ext.SoftwareSpriteRenderSystem):
@@ -78,9 +82,10 @@ class CollisionSystem(sdl2.ext.Applicator):
             ball.sprite.x + ball.sprite.size[0] >= maxx):
 
             winner = player2 if ball.sprite.x <= minx else player1
-            winner.playerdata.score += 1
-            scores = (player1.playerdata.score, player2.playerdata.score)
-            print("Score: {} to {}".format(*scores))
+            winner.score.increment()
+            print("Score: {} to {}".format(
+                player1.score.scoredata.value,
+                player2.score.scoredata.value))
 
             bwidth = ball.sprite.size[0]
             bcenterx = minx + (maxx - minx) // 2
@@ -156,17 +161,33 @@ class TrackingAIController(sdl2.ext.Applicator):
                 else:
                     vel.vy = 0
 
+class ScoreData:
+
+    def __init__(self, sprites):
+        self.sprites = sprites
+        self.value = 0
+
+class Score(sdl2.ext.Entity):
+
+    def __init__(self, world, sprites):
+        self.sprite = sprites[0]
+        self.scoredata = ScoreData(sprites)
+
+    def increment(self):
+        self.scoredata.value += 1
+        self.sprite = self.scoredata.sprites[min(10, self.scoredata.value)]
+
 class PlayerData:
 
     def __init__(self):
         self.ai = False
-        self.score = 0
 
 class Player(sdl2.ext.Entity):
 
-    def __init__(self, world, sprite, posx=0, posy=0, ai=False):
+    def __init__(self, world, sprite, score, posx=0, posy=0, ai=False):
         self.sprite = sprite
         self.sprite.position = posx, posy
+        self.score = score
         self.velocity = Velocity()
         self.playerdata = PlayerData()
         self.playerdata.ai = ai
@@ -201,8 +222,18 @@ def run():
     sp_paddle2 = factory.from_color(WHITE, size=(20, 100))
     sp_ball = factory.from_color(BLUE, size=(20, 20))
 
-    player1 = Player(world, sp_paddle1, 0, 250)
-    player2 = Player(world, sp_paddle2, 780, 250, True)
+    load = lambda i: factory.from_image(RESOURCES.get_path("{}.bmp".format(i)))
+    sp_digits1 = [load(i) for i in range(10)] + [load('inf')]
+    for sp in sp_digits1:
+        sp.x, sp.y = 200, 10
+    sp_digits2 = [load(i) for i in range(10)] + [load('inf')]
+    for sp in sp_digits2:
+        sp.x, sp.y = 600, 10
+
+    score1 = Score(world, sp_digits1)
+    score2 = Score(world, sp_digits2)
+    player1 = Player(world, sp_paddle1, score1, 0, 250)
+    player2 = Player(world, sp_paddle2, score2, 780, 250, True)
 
     ball = Ball(world, sp_ball, 390, 290)
     ball.velocity.vx = -3
