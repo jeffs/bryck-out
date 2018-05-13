@@ -10,6 +10,32 @@ class SoftwareRenderer(sdl2.ext.SoftwareSpriteRenderSystem):
         sdl2.ext.fill(self.surface, sdl2.ext.Color(0, 0, 0))
         super().render(components)
 
+class CollisionSystem(sdl2.ext.Applicator):
+    def __init__(self, minx, miny, maxx, maxy):
+        super().__init__()
+        self.componenttypes = Velocity, sdl2.ext.Sprite
+        self.ball = None
+        self.minx = minx
+        self.miny = miny
+        self.maxx = maxx
+        self.maxy = maxy
+
+    def _overlap(self, item):
+        pos, sprite = item
+        if sprite == self.ball.sprite:
+            return False
+
+        left, top, right, bottom = sprite.area
+        bleft, btop, bright, bbottom = self.ball.sprite.area
+
+        return (bleft < right and bright > left and
+                btop < bottom and bbottom > top)
+
+    def process(self, world, componentsets):
+        collitems = [comp for comp in componentsets if self._overlap(comp)]
+        if collitems:
+            self.ball.velocity.vx = -self.ball.velocity.vx
+
 class MovementSystem(sdl2.ext.Applicator):
     def __init__(self, minx, miny, maxx, maxy):
         super().__init__()
@@ -60,9 +86,11 @@ def run():
     world = sdl2.ext.World()
 
     movement = MovementSystem(0, 0, 800, 600)
+    collision = CollisionSystem(0, 0, 800, 600)
     spriterenderer = SoftwareRenderer(window)
 
     world.add_system(movement)
+    world.add_system(collision)
     world.add_system(spriterenderer)
 
     factory = sdl2.ext.SpriteFactory(sdl2.ext.SOFTWARE)
@@ -76,6 +104,8 @@ def run():
     ball = Ball(world, sp_ball, 390, 290)
     ball.velocity.vx = -3
 
+    collision.ball = ball
+
     running = True
     while running:
         events = sdl2.ext.get_events()
@@ -83,6 +113,7 @@ def run():
             if event.type == sdl2.SDL_QUIT:
                 running = False
                 break
+        sdl2.SDL_Delay(10)
         world.process()
 
 if __name__ == "__main__":
